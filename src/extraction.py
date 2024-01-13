@@ -1,22 +1,27 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import datetime
+
+BASE_URL = 'https://listado.mercadolibre.com.co'
 
 def main(product):
     list_df = []
     initial_df, follow = organize_page_data(product=product)
+    initial_df['vehicle_info'] = initial_df['link'].apply(get_vehicle_info)
     list_df.append(initial_df)
     while True:
         print('follow_page: ', follow)
         follow_df, follow = organize_page_data(url=follow)
+        follow_df['vehicle_info'] = follow_df['link'].apply(get_vehicle_info)
         list_df.append(follow_df)
         follow_df.rename(columns={None:product}, inplace=True)
         print(follow_df.columns)
         if follow is None:
             break
-    return pd.concat(list_df)  
+    return pd.concat(list_df)
         
-def organize_page_data(url: str = 'https://listado.mercadolibre.com.co' ,product= None):
+def organize_page_data(url: str = BASE_URL ,product= None):
     s = get_soup_by_url(url=url, product=product)
     products = get_all_product_names_for_page(s)
     follow = None
@@ -60,6 +65,26 @@ def get_all_product_urls_for_page(s):
     product_url = s.find_all('a', attrs= {"class":"ui-search-item__group__element ui-search-link__title-card ui-search-link"})
     product_url = [h.get('href') for h in product_url]
     return product_url
+
+def get_vehicle_info(url):
+    s = get_soup_by_url(url)
+    text = s.find_all('span', attrs= {'class':'ui-pdp-subtitle'})[0].text.replace('.', '')
+    parts = text.split(' · ')
+    location = s.find('p', attrs = {'class':'ui-seller-info__status-info__subtitle'}).text
+    pub_number = s.find_all('span', attrs= {'class':'ui-pdp-color--BLACK ui-pdp-family--SEMIBOLD'})[0].text.replace('#','')
+    year = parts[0].split(' | ')[0]
+    kilometrage = parts[0].split(' | ')[1].replace('km', '')
+    publication_date = parts[1]
+    output_dict = {
+        "Year": year,
+        "Kilometrage": kilometrage,
+        "Publication Date": publication_date,
+        "Location": location,
+        "Pub Number": pub_number,
+        "Created At": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    return output_dict
 
 
 if __name__ == '__main__':
