@@ -2,32 +2,29 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import datetime
-from utils import timer_decorator, async_timer_decorator, run_async, async_apply
+from utils import timer_decorator, async_timer_decorator
 import aiohttp
 import asyncio
 
 BASE_URL = 'https://listado.mercadolibre.com.co'
 
-@async_timer_decorator
-async def main(product):
+@timer_decorator
+def main(product):
     list_df = []
-    initial_df, follow = await organize_page_data(product=product)
-    tasks = [get_vehicle_info(x) for x in initial_df['link']]
-    initial_df['vehicle_info'] = await asyncio.gather(*tasks)
+    initial_df, follow = organize_page_data(product=product)
+    initial_df['vehicle_info'] = initial_df['link'].apply(get_vehicle_info)
     list_df.append(initial_df)
     # while True:
-    #     print('follow_page: ', follow)
-    #     follow_df, follow = await organize_page_data(url=follow)
+    #     follow_df, follow = organize_page_data(url=follow)
     #     follow_df['vehicle_info'] = follow_df['link'].apply(get_vehicle_info)
     #     list_df.append(follow_df)
     #     follow_df.rename(columns={None:product}, inplace=True)
-    #     print(follow_df.columns)
     #     if follow is None:
     #         break
     return pd.concat(list_df)
         
-async def organize_page_data(url: str = BASE_URL ,product= None):
-    s = await get_soup_by_url(url=url, product=product)
+def organize_page_data(url: str = BASE_URL ,product= None):
+    s = get_soup_by_url(url=url, product=product)
     products = get_all_product_names_for_page(s)
     follow = None
     try:
@@ -40,15 +37,15 @@ async def organize_page_data(url: str = BASE_URL ,product= None):
     return pd.DataFrame(output_dict), follow
 
 
-async def get_soup_by_url(url, product=None):
-   if product is None:
-       url = url
-   else:
-       url = f'{url}/{product}'
-   async with aiohttp.ClientSession() as session:
-       async with session.get(url) as response:
-           s = BeautifulSoup(await response.text(), 'html.parser')
-           return s
+def get_soup_by_url(url, product: str = None):
+    if product is None:
+        url = url
+    else:
+        url = f'{url}/{product}'
+    r = requests.get(url=url)
+    s = BeautifulSoup(r.content, 'html.parser')
+    return s
+
 
 def get_all_product_names_for_page(s):
     product_names = s.find_all('h2', attrs= {"class":"ui-search-item__title"})
@@ -71,28 +68,41 @@ def get_all_product_urls_for_page(s):
     product_url = [h.get('href') for h in product_url]
     return product_url
 
-async def get_vehicle_info(url):
-    s = await get_soup_by_url(url)
-    text = s.find_all('span', attrs= {'class':'ui-pdp-subtitle'})[0].text.replace('.', '')
-    parts = text.split(' · ')
-    location = s.find('p', attrs = {'class':'ui-seller-info__status-info__subtitle'}).text
-    pub_number = s.find_all('span', attrs= {'class':'ui-pdp-color--BLACK ui-pdp-family--SEMIBOLD'})[0].text.replace('#','')
-    year = parts[0].split(' | ')[0]
-    kilometrage = parts[0].split(' | ')[1].replace('km', '')
-    publication_date = parts[1]
-    output_dict = {
-        "Year": year,
-        "Kilometrage": kilometrage,
-        "Publication Date": publication_date,
-        "Location": location,
-        "Pub Number": pub_number,
-        "Created At": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
+def get_vehicle_info(url):
+   s = get_soup_by_url(url)
+   text = s.find_all('span', attrs= {'class':'ui-pdp-subtitle'})[0].text.replace('.', '')
+   parts = text.split(' · ')
+   location = s.find('p', attrs = {'class':'ui-seller-info__status-info__subtitle'}).text
+   pub_number = s.find_all('span', attrs= {'class':'ui-pdp-color--BLACK ui-pdp-family--SEMIBOLD'})[0].text.replace('#','')
+   
+   year = ''
+   kilometrage = ''
+   publication_date = ''
+   
+   for i, part in enumerate(parts):
+       try:
+           split_part = part.split(' | ')
+           
+           if i == 0:
+               year = split_part[0]
+               kilometrage = split_part[1].replace('km', '')
+           elif i == 1:
+               publication_date = part
+       except IndexError:
+           print(f"Part {i} does not contain enough elements")
+   
+   output_dict = {
+       "Year": year,
+       "Kilometrage": kilometrage,
+       "Publication Date": publication_date,
+       "Location": location,
+       "Pub Number": pub_number,
+       "Created At": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+   }
 
-    return output_dict
+   return output_dict
 
 
 if __name__ == '__main__':
-    data = asyncio.run(main(product='carros'))
-    data.to_csv('final_data_async.csv')
-    
+    data = main(product='carros')
+    data.to_csv('final_data_sync.csv')
