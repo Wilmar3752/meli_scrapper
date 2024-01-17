@@ -39,7 +39,7 @@ async def organize_page_data(url: str = BASE_URL ,product= None):
         print('follow page not found')    
     prices = get_all_product_prices_for_page(s)
     urls = get_all_product_urls_for_page(s)
-    output_dict = {product:products, 'price':prices ,'link':urls}
+    output_dict = {'product':products, 'price':prices ,'link':urls}
     return pd.DataFrame(output_dict), follow
 
 
