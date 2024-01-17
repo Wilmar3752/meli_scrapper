@@ -1,9 +1,14 @@
 from fastapi import FastAPI
 from src.extraction import main
+from pydantic import BaseModel, Field
 
 app = FastAPI()
 
-@app.get("/{product}")
-async def get_data(product):
+class Product(BaseModel):
+    product: str = Field("Producto a buscar", example = "carros")
+
+@app.post("/product")
+async def get_data(product: Product):
+    print(product)
     data = await main(product)
     return data
