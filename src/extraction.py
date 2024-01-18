@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import datetime
-from src.utils import timer_decorator, async_timer_decorator, run_async, async_apply
+from src.utils import async_timer_decorator, generate_proxy_url
 import aiohttp
 import asyncio
 import json
@@ -44,12 +44,14 @@ async def organize_page_data(url: str = BASE_URL ,product= None):
 
 
 async def get_soup_by_url(url, product=None):
+   proxy = generate_proxy_url()
+   print(proxy)
    if product is None:
        url = url
    else:
        url = f'{url}/{product}'
    async with aiohttp.ClientSession() as session:
-       async with session.get(url) as response:
+       async with session.get(url, proxy = proxy) as response:
            s = BeautifulSoup(await response.text(encoding='utf-8', errors='ignore'), 'html.parser')
            return s
 
