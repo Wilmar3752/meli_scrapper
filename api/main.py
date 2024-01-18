@@ -10,5 +10,5 @@ class Product(BaseModel):
 @app.post("/product")
 async def get_data(product: Product):
     print(product)
-    data = await main(product)
+    data = await main(product.product)
     return data

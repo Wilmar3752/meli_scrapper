@@ -3,3 +3,4 @@ api/__pycache__/
 *.ipynb
 *.csv
 *.env
+src/extraction_normal.py
