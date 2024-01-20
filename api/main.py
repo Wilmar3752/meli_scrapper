@@ -12,3 +12,7 @@ async def get_data(product: Product):
     print(product)
     data = await main(product.product)
     return data
+
+@app.get("/heart-beat")
+async def service_health():
+    return {"ok"}
