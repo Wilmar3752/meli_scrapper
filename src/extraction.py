@@ -10,25 +10,17 @@ import json
 BASE_URL = 'https://listado.mercadolibre.com.co'
 
 @async_timer_decorator
-async def main(product, pages = 1):
+async def main(product):
     list_df = []
     initial_df, follow = await organize_page_data(product=product)
-    tasks = [get_vehicle_info(x) for x in initial_df['link']]
-    initial_df[f'{product}_info'] = await asyncio.gather(*tasks)
     list_df.append(initial_df)
-    count=0
-    if pages >= 1:
-        while True:
-            count += 1
-            if count >= pages or follow is None:
-                break
-            print('follow_page: ', follow)
-            follow_df, follow = await organize_page_data(url=follow)
-            tasks = [get_vehicle_info(x) for x in initial_df['link']]
-            follow_df[f'{product}_info'] = await asyncio.gather(*tasks)
-            list_df.append(follow_df)
-            follow_df.rename(columns={None:product}, inplace=True)
-            print("confador de follows ",count)
+    while True:
+        print('follow_page: ', follow)
+        follow_df, follow = await organize_page_data(url=follow)
+        list_df.append(follow_df)
+        follow_df.rename(columns={None:product}, inplace=True)
+        if follow is None:
+            break
 
     final_data = pd.concat(list_df)
     output = json.loads(final_data.to_json(orient='records'))
@@ -44,7 +36,16 @@ async def organize_page_data(url: str = BASE_URL ,product= None):
         print('follow page not found')    
     prices = get_all_product_prices_for_page(s)
     urls = get_all_product_urls_for_page(s)
-    output_dict = {'product':products, 'price':prices ,'link':urls}
+    years = get_year(s)
+    kilometros = get_km(s)
+    locations = get_location(s)
+    output_dict = {'product':products, 
+                   'price':prices,
+                   'link':urls,
+                   'years': years,
+                   'kilometraje':kilometros,
+                   'locations': locations}
+    
     return pd.DataFrame(output_dict), follow
 
 
@@ -89,56 +90,18 @@ def get_all_product_urls_for_page(s):
     product_url = [h.get('href') for h in product_url]
     return product_url
 
-async def get_vehicle_info(url):
-   s = await get_soup_by_url(url)
-    
-   if s is None:
-    print("Failed to retrieve webpage content.")
-    return {'eror'}
-   
-   try:
-       text = s.find_all('span', attrs= {'class':'ui-pdp-subtitle'})[0].text.replace('.', '')
-   except IndexError:
-       text = ''
-   parts = text.split(' · ')
-   location = ''
-   pub_number = ''
-   try:
-       location = s.find('p', attrs = {'class':'ui-seller-info__status-info__subtitle'}).text
-   except AttributeError:
-       pass
-   try:
-       pub_number = s.find_all('span', attrs= {'class':'ui-pdp-color--BLACK ui-pdp-family--SEMIBOLD'})[0].text.replace('#','')
-   except IndexError:
-       pass
-   
-   year = ''
-   kilometrage = ''
-   publication_date = ''
-   
-   for i, part in enumerate(parts):
-       try:
-           split_part = part.split(' | ')
-           
-           if i == 0:
-               year = split_part[0]
-               kilometrage = split_part[1].replace('km', '')
-           elif i == 1:
-               publication_date = part
-       except IndexError:
-           print(f"Part {i} does not contain enough elements")
-   
-   output_dict = {
-       "Year": year,
-       "Kilometrage": kilometrage,
-       "Publication Date": publication_date,
-       "Location": location,
-       "Pub Number": pub_number,
-       "Created At": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-   }
-
-   return output_dict
-
+def get_year(s):
+    soup = s.find_all('li', attrs={'class': 'ui-search-card-attributes__attribute'})
+    year = [x.text for x in soup[::2]]
+    return year
+def get_km(s):
+    soup = s.find_all('li', attrs={'class': 'ui-search-card-attributes__attribute'})
+    km = [x.text for x in soup[1::2]]
+    return km
+def get_location(s):
+    soup = s.find_all('span', attrs={'class': 'ui-search-item__group__element ui-search-item__location'})
+    location = [x.text for x in soup]
+    return location
 
 if __name__ == '__main__':
     data = asyncio.run(main(product='carro'))
