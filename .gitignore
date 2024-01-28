@@ -2,3 +2,5 @@ src/__pycache__/
 api/__pycache__/
 *.ipynb
 *.csv
+*.env
+src/extraction.py
