@@ -1,3 +1,13 @@
+---
+title: Scraper
+emoji: 📈
+colorFrom: yellow
+colorTo: yellow
+sdk: docker
+pinned: false
+license: mit
+---
+
 # MeLi Scraper
 Web scrapping proyect for vehicle prices in Colombia. To Mercado Libre page with educational focus
 ## Locally request
