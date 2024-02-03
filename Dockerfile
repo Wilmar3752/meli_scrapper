@@ -8,7 +8,7 @@ WORKDIR /app
 COPY requirements.txt ./
 COPY api/ ./api/
 COPY src/ ./src/
-COPY .env ./
+#COPY .env ./
 
 # Instalar las dependencias
 RUN pip install --no-cache-dir -r requirements.txt
@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
 # Exponer el puerto 8000 para que otros contenedores puedan acceder a tu API
-EXPOSE 8000
+EXPOSE 7680
 
 # Comando para iniciar la aplicación
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860"]
