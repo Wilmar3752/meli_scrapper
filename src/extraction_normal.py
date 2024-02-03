@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-from src.utils import timer_decorator
+from src.utils import timer_decorator, generate_proxy_url
 import json
 from datetime import datetime
 
@@ -56,14 +56,14 @@ def organize_page_data(url: str = BASE_URL ,product= None):
 
 
 def get_soup_by_url(url, product: str = None):
-    #proxy = generate_proxy_url()
-    # proxies = {'http': proxy,
-    #            'https': proxy}
+    proxy = generate_proxy_url()
+    proxies = {'http': proxy,
+               'https': proxy}
     if product is None:
         url = url
     else:
         url = f'{url}/{product}'
-    r = requests.get(url=url)
+    r = requests.get(url=url, proxies=proxies)
     s = BeautifulSoup(r.content, 'html.parser')
     return s
 
