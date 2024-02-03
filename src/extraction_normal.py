@@ -56,14 +56,14 @@ def organize_page_data(url: str = BASE_URL ,product= None):
 
 
 def get_soup_by_url(url, product: str = None):
-    proxy = generate_proxy_url()
-    proxies = {'http': proxy,
-               'https': proxy}
+    #proxy = generate_proxy_url()
+    # proxies = {'http': proxy,
+    #            'https': proxy}
     if product is None:
         url = url
     else:
         url = f'{url}/{product}'
-    r = requests.get(url=url, proxies=proxies)
+    r = requests.get(url=url)
     s = BeautifulSoup(r.content, 'html.parser')
     return s
 
