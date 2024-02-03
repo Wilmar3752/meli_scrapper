@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-from src.utils import timer_decorator, generate_proxy_url
+from src.utils import timer_decorator
 import json
 from datetime import datetime
 
