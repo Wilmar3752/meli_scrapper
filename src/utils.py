@@ -16,15 +16,6 @@ def timer_decorator(func):
        return result
    return wrapper
 
-def async_timer_decorator(func):
-   async def wrapper(*args, **kwargs):
-       start_time = time.time()
-       result = await func(*args, **kwargs)
-       end_time = time.time()
-       print(f"Function {func.__name__} took {end_time - start_time:.4f} seconds to execute")
-       return result
-   return wrapper
-
 
 def generate_proxy_url():
     port = random.randint(10000,10099)
