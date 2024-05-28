@@ -3,7 +3,7 @@ services:
  meli: 
   build: .
   ports:
-    - 8000:7860
+    - 7860:7860
   volumes:
     - ./requirements.txt:/app/requirements.txt
     - ./api:/app/api
