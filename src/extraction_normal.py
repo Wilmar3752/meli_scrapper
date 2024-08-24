@@ -69,7 +69,7 @@ def get_soup_by_url(url, product: str = None):
 
 
 def get_all_product_names_for_page(s):
-    product_names = s.find_all('h2', attrs= {"class":"ui-search-item__title"})
+    product_names = s.find_all('h2', attrs= {"class":"poly-box"})
     product_names = [v.text for v in product_names]
     return product_names
 
@@ -85,20 +85,20 @@ def get_follow_page(s):
     return follow_page
 
 def get_all_product_urls_for_page(s):
-    product_url = s.find_all('a', attrs= {"class":"ui-search-item__group__element ui-search-link__title-card ui-search-link"})
+    product_url = s.find_all('a', attrs= {"class":"poly-component__title"})
     product_url = [h.get('href') for h in product_url]
     return product_url
 
 def get_year(s):
-    soup = s.find_all('li', attrs={'class': 'ui-search-card-attributes__attribute'})
+    soup = s.find_all('li', attrs={'class': 'poly-attributes-list__item poly-attributes-list__bar'})
     year = [x.text for x in soup[::2]]
     return year
 def get_km(s):
-    soup = s.find_all('li', attrs={'class': 'ui-search-card-attributes__attribute'})
+    soup = s.find_all('li', attrs={'class': 'poly-attributes-list__item poly-attributes-list__bar'})
     km = [x.text for x in soup[1::2]]
     return km
 def get_location(s):
-    soup = s.find_all('span', attrs={'class': 'ui-search-item__group__element ui-search-item__location'})
+    soup = s.find_all('span', attrs={'class': 'poly-component__location'})
     location = [x.text for x in soup]
     return location
 
