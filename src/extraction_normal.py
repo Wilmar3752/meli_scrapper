@@ -85,8 +85,8 @@ def get_follow_page(s):
     return follow_page
 
 def get_all_product_urls_for_page(s):
-    product_url = s.find_all('a', attrs= {"class":"poly-component__title"})
-    product_url = [h.get('href') for h in product_url]
+    product_url = s.find_all('h2', attrs= {"class":"poly-box poly-component__title"})
+    product_url = [h.find("a").get('href') for h in product_url]
     return product_url
 
 def get_year(s):
