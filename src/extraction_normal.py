@@ -90,11 +90,11 @@ def get_all_product_urls_for_page(s):
     return product_url
 
 def get_year(s):
-    soup = s.find_all('li', attrs={'class': 'poly-attributes-list__item poly-attributes-list__bar'})
+    soup = s.find_all('li', attrs={'class': 'poly-attributes-list__item poly-attributes-list__separator'})
     year = [x.text for x in soup[::2]]
     return year
 def get_km(s):
-    soup = s.find_all('li', attrs={'class': 'poly-attributes-list__item poly-attributes-list__bar'})
+    soup = s.find_all('li', attrs={'class': 'poly-attributes-list__item poly-attributes-list__separator'})
     km = [x.text for x in soup[1::2]]
     return km
 def get_location(s):
