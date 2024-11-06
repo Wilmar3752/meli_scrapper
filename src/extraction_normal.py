@@ -6,30 +6,40 @@ import json
 from datetime import datetime
 
 
-BASE_URL = 'https://listado.mercadolibre.com.co'
+BASE_URL = 'https://carros.mercadolibre.com.co/carros_PublishedToday_YES_NoIndex_True_FiltersAvailableSidebar?filter=state'
 
 @timer_decorator
 def main(product, pages):
+    s = get_soup_by_url(BASE_URL)
+    links = get_all_location_links(s)
     list_df = []
-    initial_df, follow = organize_page_data(product=product)
-    list_df.append(initial_df)
-    if pages == 'all':
-        while True:
-            follow_df, follow = organize_page_data(url=follow)
-            list_df.append(follow_df)
-            follow_df.rename(columns={None:product}, inplace=True)
-            if follow is None:
-                break
-    elif isinstance(pages, int):
-        for _ in range(pages - 1): # subtract 1 because we have already scraped the first page
-            follow_df, follow = organize_page_data(url=follow)
-            list_df.append(follow_df)
-            follow_df.rename(columns={None:product}, inplace=True)
-            if follow is None:
-                break
+    for link in links:
+        print(link)
+        initial_df, follow = organize_page_data(url=link,product=product)
+        print(initial_df)
+        list_df.append(initial_df)
+        if pages == 'all':
+            while True:
+                follow_df, follow = organize_page_data(url=follow)
+                list_df.append(follow_df)
+                follow_df.rename(columns={None:product}, inplace=True)
+                if follow is None:
+                    break
+        elif isinstance(pages, int):
+            for _ in range(pages - 1): # subtract 1 because we have already scraped the first page
+                follow_df, follow = organize_page_data(url=follow)
+                list_df.append(follow_df)
+                follow_df.rename(columns={None:product}, inplace=True)
+                if follow is None:
+                    break
     final_data = pd.concat(list_df)
     output = json.loads(final_data.to_json(orient='records'))
     return output
+
+def get_all_location_links(s):
+    divs  = s.find_all('a')
+    state_links = [div['href'] for div in divs[:-1]]
+    return state_links
 
 def organize_page_data(url: str = BASE_URL ,product= None):
     s = get_soup_by_url(url=url, product=product)
