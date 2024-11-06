@@ -14,9 +14,7 @@ def main(product, pages):
     links = get_all_location_links(s)
     list_df = []
     for link in links:
-        print(link)
         initial_df, follow = organize_page_data(url=link,product=product)
-        print(initial_df)
         list_df.append(initial_df)
         if pages == 'all':
             while True:
