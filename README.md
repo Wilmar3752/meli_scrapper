@@ -11,16 +11,25 @@ license: mit
 # MeLi Scraper
 Web scrapping proyect for vehicle prices in Colombia. To Mercado Libre page with educational focus
 ## Locally request
-Please create your virtual environment before, for example
+Create your virtual environment with [uv](https://docs.astral.sh/uv/) and install dependencies:
 ```bash
-python3 -m venv myenv
-source myenv/bin/activate
+uv venv
+# Add automatic PYTHONPATH to activate script
+cat >> .venv/bin/activate << 'EOF'
+
+# set PYTHONPATH to project root
+if ! [ -z "${PYTHONPATH+_}" ] ; then
+    _OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+fi
+PYTHONPATH="$(dirname "$VIRTUAL_ENV")"
+export PYTHONPATH
+EOF
+source .venv/bin/activate
+uv pip install -r requirements.txt
 ```
-Then run
+Then run the scraper:
 ```bash
-PYTHONPATH=$PWD
-pip install -r requirements.txt
-python src/extraction.py
+python src/extraction_normal.py
 ```
 
 ## API
