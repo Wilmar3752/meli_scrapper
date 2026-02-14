@@ -35,7 +35,7 @@ async def main(product, pages, items='all'):
         page = await context.new_page()
 
         await _accept_cookies(page)
-        await _navigate_with_verification(page, BASE_URL)
+        await _navigate_with_verification(page, BASE_URL, product)
 
         all_rows = []
         page_num = 1
@@ -134,18 +134,38 @@ async def _accept_cookies(page):
         pass
 
 
-async def _navigate_with_verification(page, url, max_retries=3):
+async def _navigate_with_verification(page, url, product, max_retries=3):
+    # Strategy 1: Search from homepage like a real user
+    print(f'  Searching for "{product}" from homepage...')
+    search_input = page.locator('input[name="as_word"]')
+    if await search_input.count() > 0:
+        await search_input.fill(product)
+        await search_input.press('Enter')
+        try:
+            await page.wait_for_selector('div.ui-search-result__wrapper', timeout=15000)
+            print(f'  Search worked: {page.url}')
+            return
+        except Exception:
+            print(f'  Search did not load results, trying direct URL...')
+
+    # Strategy 2: Direct URL with retries
     for attempt in range(max_retries):
-        await page.goto(url, wait_until='domcontentloaded')
-        # Wait for MeLi verification challenge to resolve
-        if 'account-verification' in page.url or 'gz/' in page.url:
-            print(f'  Verification challenge detected (attempt {attempt+1}), waiting...')
-            await page.wait_for_timeout(10000)
-            # After waiting, MeLi usually redirects back automatically
-            if 'account-verification' not in page.url and 'gz/' not in page.url:
-                break
+        await page.goto(url, wait_until='networkidle')
+
+        if 'account-verification' not in page.url and 'gz/' not in page.url:
+            break
+
+        print(f'  Verification challenge detected (attempt {attempt+1}): {page.url}')
+        try:
+            await page.wait_for_url(
+                lambda u: 'account-verification' not in u and 'gz/' not in u,
+                timeout=30000,
+            )
+            print(f'  Challenge resolved, redirected to: {page.url}')
+            break
+        except Exception:
+            print(f'  Challenge did not redirect, retrying...')
             continue
-        break
 
     try:
         await page.wait_for_selector('div.ui-search-result__wrapper', timeout=15000)
