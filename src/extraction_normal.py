@@ -14,11 +14,14 @@ USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
 
 
 @timer_decorator
-async def main(product, pages):
-    if product == 'carros':
-        BASE_URL = 'https://carros.mercadolibre.com.co/'
-    elif product == 'motos':
-        BASE_URL = 'https://motos.mercadolibre.com.co/'
+async def main(product, pages, items='all'):
+    URLS = {
+        'carros': 'https://carros.mercadolibre.com.co/',
+        'motos': 'https://motos.mercadolibre.com.co/',
+    }
+    if product not in URLS:
+        raise ValueError(f"product must be 'carros' or 'motos', got '{product}'")
+    BASE_URL = URLS[product]
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True, args=BROWSER_ARGS)
@@ -38,13 +41,28 @@ async def main(product, pages):
         except Exception:
             await page.wait_for_timeout(5000)
 
-        list_df = []
+        all_rows = []
         page_num = 1
 
         while True:
             print(f'Scraping page {page_num}: {page.url}')
-            df = parse_current_page(page_content=await page.content())
-            list_df.append(df)
+            rows = parse_listing_page(page_content=await page.content())
+
+            for i, row in enumerate(rows):
+                if items != 'all' and len(all_rows) + i >= items:
+                    rows = rows[:i]
+                    break
+                link = row.get('link')
+                if not link:
+                    continue
+                print(f'  Detail {i+1}/{len(rows)}: {link[:80]}...')
+                try:
+                    detail = await scrape_detail(page, link)
+                    row.update(detail)
+                except Exception as e:
+                    print(f'  Failed to scrape detail: {e}')
+
+            all_rows.extend(rows)
 
             if pages != 'all' and page_num >= pages:
                 break
@@ -57,9 +75,55 @@ async def main(product, pages):
 
         await browser.close()
 
-    final_data = pd.concat(list_df)
+    final_data = pd.DataFrame(all_rows)
     output = json.loads(final_data.to_json(orient='records'))
     return output
+
+
+async def scrape_detail(page, url):
+    await page.goto(url, wait_until='domcontentloaded')
+    try:
+        await page.wait_for_selector('h1', timeout=10000)
+    except Exception:
+        await page.wait_for_timeout(3000)
+
+    html = await page.content()
+    soup = BeautifulSoup(html, 'html.parser')
+    result = {}
+
+    # Extract JSON-LD Vehicle data
+    for script in soup.find_all('script', type='application/ld+json'):
+        try:
+            ld = json.loads(script.string)
+            if isinstance(ld, dict) and ld.get('@type') == 'Vehicle':
+                result['json_ld'] = ld
+                break
+        except (json.JSONDecodeError, TypeError):
+            continue
+
+    # Extract specs table
+    specs = {}
+    for tr in soup.select('tr.ui-vpp-striped-specs__row'):
+        th = tr.find('th')
+        td = tr.find('td')
+        if th and td:
+            specs[th.get_text(strip=True)] = td.get_text(strip=True)
+    if specs:
+        result['specs'] = specs
+
+    # Extract seller name
+    seller_el = soup.select_one('.ui-vip-seller-profile')
+    if seller_el:
+        name_el = seller_el.select_one('.ui-vip-seller-profile__info-name, .ui-pdp-seller__header__title')
+        if name_el:
+            result['seller_name'] = name_el.get_text(strip=True)
+
+    # Extract description
+    desc_el = soup.select_one('.ui-pdp-description__content')
+    if desc_el:
+        result['description'] = desc_el.get_text(strip=True)
+
+    return result
 
 
 async def _accept_cookies(page):
@@ -91,7 +155,7 @@ async def goto_next_page(page):
     return True
 
 
-def parse_current_page(page_content):
+def parse_listing_page(page_content):
     s = BeautifulSoup(page_content, 'html.parser')
     cards = s.find_all('div', attrs={"class": "ui-search-result__wrapper"})
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -121,11 +185,11 @@ def parse_current_page(page_content):
             '_created': now,
         })
 
-    return pd.DataFrame(rows)
+    return rows
 
 
 if __name__ == '__main__':
-    data = asyncio.run(main(product='carros', pages=2))
+    data = asyncio.run(main(product='carros', pages=1, items=2))
     print(f'Total records: {len(data)}')
     for r in data[:3]:
         print(r)
