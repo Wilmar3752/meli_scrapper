@@ -15,6 +15,7 @@ USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
 
 @timer_decorator
 async def main(product, pages, items='all'):
+    product = product.lower().strip()
     URLS = {
         'carros': 'https://carros.mercadolibre.com.co/',
         'motos': 'https://motos.mercadolibre.com.co/',
@@ -34,12 +35,7 @@ async def main(product, pages, items='all'):
         page = await context.new_page()
 
         await _accept_cookies(page)
-
-        await page.goto(BASE_URL, wait_until='domcontentloaded')
-        try:
-            await page.wait_for_selector('div.ui-search-result__wrapper', timeout=15000)
-        except Exception:
-            await page.wait_for_timeout(5000)
+        await _navigate_with_verification(page, BASE_URL)
 
         all_rows = []
         page_num = 1
@@ -136,6 +132,26 @@ async def _accept_cookies(page):
             await page.wait_for_timeout(1000)
     except Exception:
         pass
+
+
+async def _navigate_with_verification(page, url, max_retries=3):
+    for attempt in range(max_retries):
+        await page.goto(url, wait_until='domcontentloaded')
+        # Wait for MeLi verification challenge to resolve
+        if 'account-verification' in page.url or 'gz/' in page.url:
+            print(f'  Verification challenge detected (attempt {attempt+1}), waiting...')
+            await page.wait_for_timeout(10000)
+            # After waiting, MeLi usually redirects back automatically
+            if 'account-verification' not in page.url and 'gz/' not in page.url:
+                break
+            continue
+        break
+
+    try:
+        await page.wait_for_selector('div.ui-search-result__wrapper', timeout=15000)
+    except Exception:
+        await page.wait_for_timeout(5000)
+    print(f'  Navigated to: {page.url}')
 
 
 async def goto_next_page(page):
