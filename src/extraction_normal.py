@@ -1,8 +1,9 @@
 import asyncio
 from bs4 import BeautifulSoup
 import pandas as pd
-from src.utils import timer_decorator, generate_proxy_url
+from src.utils import timer_decorator
 import json
+import requests
 from datetime import datetime
 from playwright.async_api import async_playwright
 
@@ -30,6 +31,40 @@ window.navigator.permissions.query = (parameters) =>
         : originalQuery(parameters);
 """
 
+FREE_PROXY_URL = (
+    'https://api.proxyscrape.com/v4/free-proxy-list/get'
+    '?request=display_proxies&proxy_format=protocolipport&format=text'
+    '&protocol=http&timeout=5000&country=co,br,mx,ar,cl,pe'
+)
+
+
+def _find_working_proxy():
+    """Find a free proxy that can reach MeLi without verification challenge."""
+    try:
+        r = requests.get(FREE_PROXY_URL, timeout=10)
+        proxies = [l.strip() for l in r.text.strip().split('\n') if l.strip()]
+    except Exception as e:
+        print(f'  Failed to fetch proxy list: {e}')
+        return None
+
+    print(f'  Testing {len(proxies)} proxies...')
+    for proxy_url in proxies:
+        try:
+            r = requests.get(
+                'https://www.mercadolibre.com.co/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                timeout=8,
+                headers={'User-Agent': USER_AGENT},
+            )
+            if r.status_code == 200 and 'account-verification' not in r.text:
+                print(f'  Working proxy found: {proxy_url}')
+                return proxy_url
+        except Exception:
+            continue
+
+    print('  No working proxy found')
+    return None
+
 
 @timer_decorator
 async def main(product, pages, items='all'):
@@ -42,8 +77,12 @@ async def main(product, pages, items='all'):
         raise ValueError(f"product must be 'carros' or 'motos', got '{product}'")
     BASE_URL = URLS[product]
 
+    proxy_url = _find_working_proxy()
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=BROWSER_ARGS)
+        launch_opts = {'headless': True, 'args': BROWSER_ARGS}
+        if proxy_url:
+            launch_opts['proxy'] = {'server': proxy_url}
+        browser = await p.chromium.launch(**launch_opts)
         context = await browser.new_context(
             user_agent=USER_AGENT,
             viewport={'width': 1920, 'height': 1080},
