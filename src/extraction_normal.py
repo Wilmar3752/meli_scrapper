@@ -9,8 +9,26 @@ from playwright.async_api import async_playwright
 BROWSER_ARGS = [
     '--disable-blink-features=AutomationControlled',
     '--no-sandbox',
+    '--disable-infobars',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--lang=es-CO',
+    '--window-size=1920,1080',
 ]
-USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+
+STEALTH_JS = """
+Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+Object.defineProperty(navigator, 'languages', {get: () => ['es-CO', 'es', 'en']});
+Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+Object.defineProperty(navigator, 'platform', {get: () => 'Linux x86_64'});
+window.chrome = {runtime: {}};
+const originalQuery = window.navigator.permissions.query;
+window.navigator.permissions.query = (parameters) =>
+    parameters.name === 'notifications'
+        ? Promise.resolve({state: Notification.permission})
+        : originalQuery(parameters);
+"""
 
 
 @timer_decorator
@@ -30,8 +48,11 @@ async def main(product, pages, items='all'):
             user_agent=USER_AGENT,
             viewport={'width': 1920, 'height': 1080},
             locale='es-CO',
+            timezone_id='America/Bogota',
+            geolocation={'latitude': 4.711, 'longitude': -74.0721},
+            permissions=['geolocation'],
         )
-        await context.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined});')
+        await context.add_init_script(STEALTH_JS)
         page = await context.new_page()
 
         await _accept_cookies(page)
