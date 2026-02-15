@@ -9,26 +9,8 @@ from playwright.async_api import async_playwright
 BROWSER_ARGS = [
     '--disable-blink-features=AutomationControlled',
     '--no-sandbox',
-    '--disable-infobars',
-    '--disable-dev-shm-usage',
-    '--disable-gpu',
-    '--lang=es-CO',
-    '--window-size=1920,1080',
 ]
-USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-
-STEALTH_JS = """
-Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-Object.defineProperty(navigator, 'languages', {get: () => ['es-CO', 'es', 'en']});
-Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
-Object.defineProperty(navigator, 'platform', {get: () => 'Linux x86_64'});
-window.chrome = {runtime: {}};
-const originalQuery = window.navigator.permissions.query;
-window.navigator.permissions.query = (parameters) =>
-    parameters.name === 'notifications'
-        ? Promise.resolve({state: Notification.permission})
-        : originalQuery(parameters);
-"""
+USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
 
 @timer_decorator
@@ -48,15 +30,17 @@ async def main(product, pages, items='all'):
             user_agent=USER_AGENT,
             viewport={'width': 1920, 'height': 1080},
             locale='es-CO',
-            timezone_id='America/Bogota',
-            geolocation={'latitude': 4.711, 'longitude': -74.0721},
-            permissions=['geolocation'],
         )
-        await context.add_init_script(STEALTH_JS)
+        await context.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined});')
         page = await context.new_page()
 
         await _accept_cookies(page)
-        await _navigate_with_verification(page, BASE_URL, product)
+
+        await page.goto(BASE_URL, wait_until='domcontentloaded')
+        try:
+            await page.wait_for_selector('div.ui-search-result__wrapper', timeout=15000)
+        except Exception:
+            await page.wait_for_timeout(5000)
 
         all_rows = []
         page_num = 1
@@ -153,46 +137,6 @@ async def _accept_cookies(page):
             await page.wait_for_timeout(1000)
     except Exception:
         pass
-
-
-async def _navigate_with_verification(page, url, product, max_retries=3):
-    # Strategy 1: Search from homepage like a real user
-    print(f'  Searching for "{product}" from homepage...')
-    search_input = page.locator('input[name="as_word"]')
-    if await search_input.count() > 0:
-        await search_input.fill(product)
-        await search_input.press('Enter')
-        try:
-            await page.wait_for_selector('div.ui-search-result__wrapper', timeout=15000)
-            print(f'  Search worked: {page.url}')
-            return
-        except Exception:
-            print(f'  Search did not load results, trying direct URL...')
-
-    # Strategy 2: Direct URL with retries
-    for attempt in range(max_retries):
-        await page.goto(url, wait_until='networkidle')
-
-        if 'account-verification' not in page.url and 'gz/' not in page.url:
-            break
-
-        print(f'  Verification challenge detected (attempt {attempt+1}): {page.url}')
-        try:
-            await page.wait_for_url(
-                lambda u: 'account-verification' not in u and 'gz/' not in u,
-                timeout=30000,
-            )
-            print(f'  Challenge resolved, redirected to: {page.url}')
-            break
-        except Exception:
-            print(f'  Challenge did not redirect, retrying...')
-            continue
-
-    try:
-        await page.wait_for_selector('div.ui-search-result__wrapper', timeout=15000)
-    except Exception:
-        await page.wait_for_timeout(5000)
-    print(f'  Navigated to: {page.url}')
 
 
 async def goto_next_page(page):
