@@ -2,6 +2,7 @@ version: '3'
 services:
  meli: 
   build: .
+  env_file: .env
   ports:
     - 7860:7860
   volumes:
