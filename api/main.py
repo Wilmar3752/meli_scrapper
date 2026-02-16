@@ -1,9 +1,19 @@
+import os
 from typing import Union
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi.security import APIKeyHeader
 from src.extraction_normal import main
 from pydantic import BaseModel, Field
 
-app = FastAPI()
+API_KEY = os.environ.get("API_KEY", "change-me")
+
+api_key_header = APIKeyHeader(name="X-API-Key")
+
+def verify_api_key(key: str = Security(api_key_header)):
+    if key != API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API key")
+
+app = FastAPI(dependencies=[Depends(verify_api_key)])
 
 class Product(BaseModel):
     product: str = Field("Producto a buscar", example = "carros")
