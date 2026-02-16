@@ -1,7 +1,7 @@
 import asyncio
 from bs4 import BeautifulSoup
 import pandas as pd
-from src.utils import timer_decorator
+from src.utils import timer_decorator, generate_proxy_url
 import json
 from datetime import datetime
 from playwright.async_api import async_playwright
@@ -28,7 +28,8 @@ async def main(product, pages, items='all'):
     BASE_URL = URLS[product]
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=BROWSER_ARGS)
+        proxy = generate_proxy_url()
+        browser = await p.chromium.launch(headless=True, args=BROWSER_ARGS, proxy=proxy)
         context = await browser.new_context(
             user_agent=USER_AGENT,
             viewport={'width': 1920, 'height': 1080},
