@@ -1,0 +1,26 @@
+FROM public.ecr.aws/lambda/python:3.10
+
+# Install system dependencies for Playwright/Chromium
+RUN dnf install -y \
+    atk \
+    cups-libs \
+    gtk3 \
+    libdrm \
+    libXcomposite \
+    libXdamage \
+    libXrandr \
+    mesa-libgbm \
+    pango \
+    alsa-lib \
+    nss \
+    libxshmfence \
+    && dnf clean all
+
+COPY requirements.lambda.txt ./
+RUN pip install --no-cache-dir -r requirements.lambda.txt
+RUN playwright install chromium
+
+COPY src/ ${LAMBDA_TASK_ROOT}/src/
+COPY lambda_handler.py ${LAMBDA_TASK_ROOT}/
+
+CMD ["lambda_handler.handler"]

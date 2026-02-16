@@ -5,3 +5,9 @@ api/__pycache__/
 *.env
 src/extraction.py
 CLAUDE.local.md
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/.terraform.lock.hcl
