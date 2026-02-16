@@ -21,6 +21,7 @@ RUN pip install --no-cache-dir -r requirements.lambda.txt
 RUN playwright install chromium
 
 COPY src/ ${LAMBDA_TASK_ROOT}/src/
+COPY api/ ${LAMBDA_TASK_ROOT}/api/
 COPY lambda_handler.py ${LAMBDA_TASK_ROOT}/
 
 CMD ["lambda_handler.handler"]
