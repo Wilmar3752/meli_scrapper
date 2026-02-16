@@ -31,6 +31,10 @@ def timer_decorator(func):
 
 
 def generate_proxy_url():
-    port = random.randint(10000,10099)
-    return f'http://{PROXY_USER}:{PROXY_PASSWORD}@gate.smartproxy.com:{port}'
+    port = random.randint(10000, 10099)
+    return {
+        'server': f'http://gate.decodo.com:{port}',
+        'username': PROXY_USER,
+        'password': PROXY_PASSWORD,
+    }
 
