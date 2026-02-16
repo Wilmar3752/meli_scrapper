@@ -1,7 +1,7 @@
-FROM public.ecr.aws/lambda/python:3.10
+FROM public.ecr.aws/lambda/python:3.12
 
 # Install system dependencies for Playwright/Chromium
-RUN yum install -y \
+RUN dnf install -y \
     atk \
     cups-libs \
     gtk3 \
@@ -14,7 +14,7 @@ RUN yum install -y \
     alsa-lib \
     nss \
     libxshmfence \
-    && yum clean all
+    && dnf clean all
 
 COPY requirements.lambda.txt ./
 RUN pip install --no-cache-dir -r requirements.lambda.txt
