@@ -20,7 +20,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
 
 COPY requirements.lambda.txt ./
 RUN pip install --no-cache-dir -r requirements.lambda.txt
-RUN playwright install chromium
+RUN playwright install --with-deps chromium
 
 COPY src/ ${LAMBDA_TASK_ROOT}/src/
 COPY api/ ${LAMBDA_TASK_ROOT}/api/
