@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from src.utils import timer_decorator, generate_proxy_url
 import json
+import os
 from datetime import datetime
 from playwright.async_api import async_playwright
 
@@ -28,7 +29,8 @@ async def main(product, pages, items='all'):
     BASE_URL = URLS[product]
 
     async with async_playwright() as p:
-        proxy = generate_proxy_url()
+        is_lambda = os.environ.get('AWS_LAMBDA_FUNCTION_NAME') is not None
+        proxy = generate_proxy_url() if is_lambda else None
         browser = await p.chromium.launch(headless=True, args=BROWSER_ARGS, proxy=proxy)
         context = await browser.new_context(
             user_agent=USER_AGENT,
