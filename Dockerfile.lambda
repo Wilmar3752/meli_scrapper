@@ -1,7 +1,7 @@
 FROM public.ecr.aws/lambda/python:3.10
 
 # Install system dependencies for Playwright/Chromium
-RUN dnf install -y \
+RUN yum install -y \
     atk \
     cups-libs \
     gtk3 \
@@ -14,7 +14,7 @@ RUN dnf install -y \
     alsa-lib \
     nss \
     libxshmfence \
-    && dnf clean all
+    && yum clean all
 
 COPY requirements.lambda.txt ./
 RUN pip install --no-cache-dir -r requirements.lambda.txt
