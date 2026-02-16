@@ -76,3 +76,11 @@ resource "aws_lambda_permission" "function_url_public" {
   principal              = "*"
   function_url_auth_type = "NONE"
 }
+
+# Required since October 2025 for Function URLs to work
+resource "aws_lambda_permission" "function_url_invoke" {
+  function_name = aws_lambda_function.this.function_name
+  statement_id  = "FunctionURLAllowPublicInvoke"
+  action        = "lambda:InvokeFunction"
+  principal     = "*"
+}
