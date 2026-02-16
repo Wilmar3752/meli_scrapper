@@ -1,26 +1,37 @@
 FROM public.ecr.aws/lambda/python:3.12
 
-# Install system dependencies for Playwright/Chromium
+# Install all system dependencies Chromium needs
 RUN dnf install -y \
     atk \
+    at-spi2-atk \
     cups-libs \
+    dbus-glib \
     gtk3 \
     libdrm \
     libXcomposite \
     libXdamage \
+    libXfixes \
     libXrandr \
+    libXtst \
+    libxkbcommon \
+    libxshmfence \
     mesa-libgbm \
+    mesa-libEGL \
     pango \
     alsa-lib \
     nss \
-    libxshmfence \
+    nspr \
+    xorg-x11-fonts-100dpi \
+    xorg-x11-fonts-75dpi \
+    xorg-x11-fonts-Type1 \
+    xorg-x11-fonts-misc \
     && dnf clean all
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
 
 COPY requirements.lambda.txt ./
 RUN pip install --no-cache-dir -r requirements.lambda.txt
-RUN playwright install --with-deps chromium
+RUN playwright install chromium
 
 COPY src/ ${LAMBDA_TASK_ROOT}/src/
 COPY api/ ${LAMBDA_TASK_ROOT}/api/
