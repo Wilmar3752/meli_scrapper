@@ -16,6 +16,8 @@ RUN dnf install -y \
     libxshmfence \
     && dnf clean all
 
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
+
 COPY requirements.lambda.txt ./
 RUN pip install --no-cache-dir -r requirements.lambda.txt
 RUN playwright install chromium
