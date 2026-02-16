@@ -4,22 +4,7 @@ El scraper se despliega como una **AWS Lambda con container image** y se expone 
 
 ## Arquitectura
 
-```
-ETL (otro proyecto)
-      │
-      │  POST /product
-      ▼
-Lambda Function URL ──► Playwright + FastAPI (container)
-                              │
-                              ▼
-                        gate.decodo.com (proxy residencial)
-                              │
-                              ▼
-                        mercadolibre.com.co
-                              │
-                              ▼
-                        JSON response
-```
+![Diagrama de arquitectura](architecture.png)
 
 ## Recursos en AWS (Terraform)
 
