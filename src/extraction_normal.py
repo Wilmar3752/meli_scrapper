@@ -21,8 +21,8 @@ USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
 async def main(product, pages, items='all'):
     product = product.lower().strip()
     URLS = {
-        'carros': 'https://carros.mercadolibre.com.co/',
-        'motos': 'https://motos.mercadolibre.com.co/',
+        'carros': 'https://carros.mercadolibre.com.co/_PublishedToday_YES',
+        'motos': 'https://motos.mercadolibre.com.co/_PublishedToday_YES',
     }
     if product not in URLS:
         raise ValueError(f"product must be 'carros' or 'motos', got '{product}'")
