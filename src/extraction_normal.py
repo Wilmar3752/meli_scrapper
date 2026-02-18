@@ -40,9 +40,9 @@ async def main(product, pages, items='all'):
         await context.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined});')
         page = await context.new_page()
 
-        await page.goto(BASE_URL, wait_until='domcontentloaded')
+        await page.goto(BASE_URL, wait_until='domcontentloaded', timeout=60000)
         try:
-            await page.wait_for_selector('div.ui-search-result__wrapper', timeout=15000)
+            await page.wait_for_selector('div.ui-search-result__wrapper', timeout=30000)
         except Exception:
             await page.wait_for_timeout(5000)
 
