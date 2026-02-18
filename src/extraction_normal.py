@@ -41,8 +41,8 @@ async def main(product, pages, items='all'):
         page = await context.new_page()
 
         # Block images, fonts, media and tracking to save bandwidth
-        BLOCKED_RESOURCE_TYPES = {'image', 'font', 'media', 'stylesheet'}
-        BLOCKED_DOMAINS = ['mlstatic.com', 'googletagmanager.com', 'google-analytics.com', 'facebook.net', 'doubleclick.net']
+        BLOCKED_RESOURCE_TYPES = {'image', 'font', 'media'}
+        BLOCKED_DOMAINS = ['googletagmanager.com', 'google-analytics.com', 'facebook.net', 'doubleclick.net']
 
         async def block_unnecessary(route):
             if route.request.resource_type in BLOCKED_RESOURCE_TYPES:
@@ -64,13 +64,14 @@ async def main(product, pages, items='all'):
         page_num = 1
 
         while True:
-            print(f'Scraping page {page_num}: {page.url}')
+            listing_url = page.url
+            print(f'Scraping page {page_num}: {listing_url}')
             rows = parse_listing_page(page_content=await page.content())
 
+            if items != 'all':
+                rows = rows[:items]
+
             for i, row in enumerate(rows):
-                if items != 'all' and len(all_rows) + i >= items:
-                    rows = rows[:i]
-                    break
                 link = row.get('link')
                 if not link:
                     continue
@@ -85,6 +86,13 @@ async def main(product, pages, items='all'):
 
             if pages != 'all' and page_num >= pages:
                 break
+
+            # Return to listing page before looking for next button
+            await page.goto(listing_url, wait_until='domcontentloaded', timeout=60000)
+            try:
+                await page.wait_for_selector('div.ui-search-result__wrapper', timeout=15000)
+            except Exception:
+                await page.wait_for_timeout(3000)
 
             has_next = await goto_next_page(page)
             if not has_next:
@@ -160,17 +168,26 @@ async def _accept_cookies(page):
 async def goto_next_page(page):
     next_btn = page.locator('li.andes-pagination__button--next a')
     if await next_btn.count() == 0:
+        print('  Pagination: no next button found')
         return False
     is_disabled = await page.locator('li.andes-pagination__button--next.andes-pagination__button--disabled').count()
     if is_disabled > 0:
+        print('  Pagination: next button is disabled')
         return False
+    current_url = page.url
     await page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
     await page.wait_for_timeout(500)
     await next_btn.click()
+    # Wait for navigation or content change
+    try:
+        await page.wait_for_url(lambda url: url != current_url, timeout=15000)
+    except Exception:
+        pass
     try:
         await page.wait_for_selector('div.ui-search-result__wrapper', timeout=15000)
     except Exception:
         await page.wait_for_timeout(5000)
+    print(f'  Pagination: navigated to {page.url}')
     return True
 
 
