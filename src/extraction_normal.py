@@ -40,6 +40,20 @@ async def main(product, pages, items='all'):
         await context.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined});')
         page = await context.new_page()
 
+        # Block images, fonts, media and tracking to save bandwidth
+        BLOCKED_RESOURCE_TYPES = {'image', 'font', 'media', 'stylesheet'}
+        BLOCKED_DOMAINS = ['mlstatic.com', 'googletagmanager.com', 'google-analytics.com', 'facebook.net', 'doubleclick.net']
+
+        async def block_unnecessary(route):
+            if route.request.resource_type in BLOCKED_RESOURCE_TYPES:
+                await route.abort()
+            elif any(domain in route.request.url for domain in BLOCKED_DOMAINS):
+                await route.abort()
+            else:
+                await route.continue_()
+
+        await page.route('**/*', block_unnecessary)
+
         await page.goto(BASE_URL, wait_until='domcontentloaded', timeout=60000)
         try:
             await page.wait_for_selector('div.ui-search-result__wrapper', timeout=30000)
