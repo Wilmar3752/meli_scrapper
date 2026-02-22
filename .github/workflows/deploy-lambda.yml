@@ -35,20 +35,17 @@ jobs:
       - name: Build, tag, and push image to ECR
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build --platform linux/amd64 --provenance=false -f Dockerfile.lambda -t $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPO:latest .
-          docker push $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG
+          docker build --platform linux/amd64 --provenance=false -f Dockerfile.lambda -t $ECR_REGISTRY/$ECR_REPO:latest .
           docker push $ECR_REGISTRY/$ECR_REPO:latest
 
       - name: Update Lambda function
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
         run: |
           aws lambda update-function-code \
             --function-name $LAMBDA_FUNCTION \
-            --image-uri $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG \
+            --image-uri $ECR_REGISTRY/$ECR_REPO:latest \
             --region $AWS_REGION
           aws lambda wait function-updated-v2 \
             --function-name $LAMBDA_FUNCTION \
