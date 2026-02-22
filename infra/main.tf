@@ -63,6 +63,12 @@ resource "aws_lambda_function" "this" {
   }
 }
 
+# ── CloudWatch Logs ────────────────────────────────────────────
+resource "aws_cloudwatch_log_group" "lambda" {
+  name              = "/aws/lambda/${var.project_name}"
+  retention_in_days = 7
+}
+
 # ── Function URL ───────────────────────────────────────────────
 resource "aws_lambda_function_url" "this" {
   function_name      = aws_lambda_function.this.function_name
