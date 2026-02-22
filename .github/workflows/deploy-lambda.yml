@@ -53,3 +53,18 @@ jobs:
           aws lambda wait function-updated-v2 \
             --function-name $LAMBDA_FUNCTION \
             --region $AWS_REGION
+
+      - name: Clean up old ECR images
+        run: |
+          IMAGE_IDS=$(aws ecr list-images \
+            --repository-name $ECR_REPO \
+            --region $AWS_REGION \
+            --filter tagStatus=UNTAGGED \
+            --query 'imageIds[*]' \
+            --output json)
+          if [ "$IMAGE_IDS" != "[]" ]; then
+            aws ecr batch-delete-image \
+              --repository-name $ECR_REPO \
+              --region $AWS_REGION \
+              --image-ids "$IMAGE_IDS"
+          fi
