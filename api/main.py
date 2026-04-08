@@ -2,7 +2,8 @@ import os
 from typing import Union
 from fastapi import FastAPI, Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader
-from src.extraction_normal import main
+from src.extraction_normal import main as meli_main
+from src.extraction_carroya import main as carroya_main
 from pydantic import BaseModel, Field
 
 API_KEY = os.environ.get("API_KEY", "change-me")
@@ -15,16 +16,34 @@ def verify_api_key(key: str = Security(api_key_header)):
 
 app = FastAPI(dependencies=[Depends(verify_api_key)])
 
-class Product(BaseModel):
-    product: str = Field("Producto a buscar", example = "carros")
-    pages: Union[int, str] = Field("Number of pages to scrape", example = "all")
-    items: Union[int, str] = Field("all", description="Number of items to scrape per run", example = 2)
+class MeliProduct(BaseModel):
+    product: str = Field("Producto a buscar", example="carros")
+    pages: Union[int, str] = Field("Number of pages to scrape", example="all")
+    items: Union[int, str] = Field("all", description="Number of items to scrape per run", example=2)
 
+class CarroyaProduct(BaseModel):
+    pages: Union[int, str] = Field("Number of pages to scrape", example="all")
+    items: Union[int, str] = Field("all", description="Number of items to scrape per run", example=2)
+
+@app.post("/meli/product")
+async def get_meli_data(product: MeliProduct):
+    data = await meli_main(product=product.product,
+                           pages=product.pages,
+                           items=product.items)
+    return data
+
+@app.post("/carroya/vehiculos")
+async def get_carroya_data(product: CarroyaProduct):
+    data = await carroya_main(pages=product.pages,
+                              items=product.items)
+    return data
+
+# Keep old endpoint for backwards compatibility
 @app.post("/product")
-async def get_data(product: Product):
-    data = await main(product=product.product,
-                            pages=product.pages,
-                            items=product.items)
+async def get_data(product: MeliProduct):
+    data = await meli_main(product=product.product,
+                           pages=product.pages,
+                           items=product.items)
     return data
 
 @app.get("/heart-beat")
