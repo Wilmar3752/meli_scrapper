@@ -24,7 +24,7 @@ BLOCKED_DOMAINS = ['googletagmanager.com', 'google-analytics.com', 'facebook.net
 
 
 @timer_decorator
-async def main(pages, items='all'):
+async def main(pages, items='all', start_page=1):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True, args=BROWSER_ARGS)
         context = await browser.new_context(
@@ -46,7 +46,7 @@ async def main(pages, items='all'):
         await page.route('**/*', block_unnecessary)
 
         all_rows = []
-        page_num = 1
+        page_num = start_page
 
         while True:
             url = LISTING_URL if page_num == 1 else f'{LISTING_URL}?page={page_num}'
@@ -57,6 +57,12 @@ async def main(pages, items='all'):
                 await page.wait_for_selector('div.cy-publication-card-portal-ds-milla', timeout=30000)
             except Exception:
                 await page.wait_for_timeout(5000)
+
+            # Scroll to trigger lazy loading
+            for _ in range(5):
+                await page.evaluate('window.scrollBy(0, window.innerHeight)')
+                await page.wait_for_timeout(800)
+            await page.evaluate('window.scrollTo(0, 0)')
 
             rows = parse_listing_page(page_content=await page.content())
 
@@ -76,7 +82,7 @@ async def main(pages, items='all'):
 
             all_rows.extend(rows)
 
-            if pages != 'all' and page_num >= pages:
+            if pages != 'all' and page_num >= start_page + pages - 1:
                 break
 
             has_next = await has_next_page(page, page_num)

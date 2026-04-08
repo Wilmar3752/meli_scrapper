@@ -24,6 +24,7 @@ class MeliProduct(BaseModel):
 class CarroyaProduct(BaseModel):
     pages: Union[int, str] = Field("Number of pages to scrape", example="all")
     items: Union[int, str] = Field("all", description="Number of items to scrape per run", example=2)
+    start_page: int = Field(1, description="Page number to start scraping from", example=1)
 
 @app.post("/meli/product")
 async def get_meli_data(product: MeliProduct):
@@ -35,7 +36,8 @@ async def get_meli_data(product: MeliProduct):
 @app.post("/carroya/vehiculos")
 async def get_carroya_data(product: CarroyaProduct):
     data = await carroya_main(pages=product.pages,
-                              items=product.items)
+                              items=product.items,
+                              start_page=product.start_page)
     return data
 
 # Keep old endpoint for backwards compatibility
