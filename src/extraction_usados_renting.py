@@ -43,7 +43,6 @@ async def main(pages, items='all', start_page=1):
             locale='es-CO',
         )
         await context.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined});')
-        page = await context.new_page()
 
         async def block_unnecessary(route):
             if route.request.resource_type in BLOCKED_RESOURCE_TYPES:
@@ -53,7 +52,24 @@ async def main(pages, items='all', start_page=1):
             else:
                 await route.continue_()
 
-        await page.route('**/*', block_unnecessary)
+        await context.route('**/*', block_unnecessary)
+        page = await context.new_page()
+
+        semaphore = asyncio.Semaphore(5)
+
+        async def scrape_detail_bounded(row):
+            link = row.get('link')
+            if not link:
+                return
+            async with semaphore:
+                detail_page = await context.new_page()
+                try:
+                    detail = await scrape_detail(detail_page, link)
+                    row.update(detail)
+                except Exception as e:
+                    print(f'  Failed to scrape detail {link[:80]}: {e}')
+                finally:
+                    await detail_page.close()
 
         all_rows = []
         page_num = start_page
@@ -84,16 +100,8 @@ async def main(pages, items='all', start_page=1):
             if items != 'all':
                 rows = rows[:items]
 
-            for i, row in enumerate(rows):
-                link = row.get('link')
-                if not link:
-                    continue
-                print(f'  Detail {i+1}/{len(rows)}: {link[:80]}')
-                try:
-                    detail = await scrape_detail(page, link)
-                    row.update(detail)
-                except Exception as e:
-                    print(f'  Failed to scrape detail: {e}')
+            print(f'  Scraping {len(rows)} details in parallel (max 5 concurrent)...')
+            await asyncio.gather(*[scrape_detail_bounded(row) for row in rows])
 
             all_rows.extend(rows)
 
@@ -241,10 +249,10 @@ async def scrape_detail(page, url):
         if specs.get('Descripción'):
             result['description'] = specs['Descripción']
 
-    # Extract vehicle line from PDF ficha técnica
+    # Extract vehicle line from PDF ficha técnica — overwrites listing product name
     linea = await _extract_linea_from_pdf(page)
     if linea:
-        result['linea'] = linea
+        result['product'] = linea
 
     return result
 
@@ -320,6 +328,7 @@ def parse_listing_page(page_content):
             'kilometraje': km,
             'location': location,
             'plate': plate,
+            'linea': None,
             '_created': now,
         })
 
