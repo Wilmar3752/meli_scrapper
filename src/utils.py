@@ -1,6 +1,7 @@
 import time
 import asyncio
 import functools
+import re
 from dotenv import load_dotenv
 import os
 import random
@@ -28,6 +29,22 @@ def timer_decorator(func):
            print(f"Function {func.__name__} took {end_time - start_time:.4f} seconds to execute")
            return result
        return wrapper
+
+
+def clean_price(raw):
+    """'$129.990.000' or 'current price $\xa083900000' → '129990000' (str, digits only)."""
+    if not raw:
+        return None
+    digits = re.sub(r'[^\d]', '', raw)
+    return digits if digits else None
+
+
+def clean_km(raw):
+    """'70.471 Km' or '352.073 km' → 70471 (int)."""
+    if not raw:
+        return None
+    digits = re.sub(r'[^\d]', '', raw)
+    return int(digits) if digits else None
 
 
 def generate_proxy_url():
