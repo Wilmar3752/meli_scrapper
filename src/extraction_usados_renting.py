@@ -1,5 +1,7 @@
 import asyncio
 import re
+import io
+import tempfile
 from bs4 import BeautifulSoup
 import pandas as pd
 from src.utils import timer_decorator, clean_price, clean_km
@@ -7,6 +9,12 @@ import json
 import os
 from datetime import datetime
 from playwright.async_api import async_playwright
+import aiohttp
+try:
+    import pdfplumber
+    _PDFPLUMBER_AVAILABLE = True
+except ImportError:
+    _PDFPLUMBER_AVAILABLE = False
 
 BASE_URL = 'https://www.usadosrentingcolombia.com'
 LISTING_URL = f'{BASE_URL}/category/root'
@@ -105,6 +113,67 @@ async def main(pages, items='all', start_page=1):
     return output
 
 
+async def _extract_linea_from_pdf(page):
+    """Find the 'Descargar' link, download the PDF, and extract the 'Línea' field."""
+    if not _PDFPLUMBER_AVAILABLE:
+        return None
+    try:
+        # Find PDF URL in rendered DOM
+        pdf_url = await page.evaluate('''() => {
+            const all = Array.from(document.querySelectorAll('a'));
+            for (const a of all) {
+                const href = a.href || '';
+                const text = a.textContent.trim().toLowerCase();
+                if (href.toLowerCase().includes('.pdf') || href.toLowerCase().includes('/pdf')) return href;
+                if (text.includes('descargar') && href) return href;
+            }
+            return null;
+        }''')
+
+        pdf_bytes = None
+
+        if pdf_url and not pdf_url.startswith('blob:') and pdf_url.startswith('http'):
+            # Direct URL — download with aiohttp using page cookies
+            cookies = await page.context.cookies()
+            cookie_str = '; '.join(f"{c['name']}={c['value']}" for c in cookies)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    pdf_url,
+                    headers={'Cookie': cookie_str, 'User-Agent': USER_AGENT},
+                    timeout=aiohttp.ClientTimeout(total=30),
+                ) as resp:
+                    if resp.status == 200:
+                        pdf_bytes = await resp.read()
+        else:
+            # Fallback: intercept Playwright download via click
+            btn = page.locator('a:has-text("Descargar"), button:has-text("Descargar"), a:has-text("descargar"), button:has-text("descargar")')
+            if await btn.count() == 0:
+                return None
+            async with page.expect_download(timeout=20000) as dl_info:
+                await btn.first.click()
+            download = await dl_info.value
+            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+                tmp_path = tmp.name
+            await download.save_as(tmp_path)
+            with open(tmp_path, 'rb') as f:
+                pdf_bytes = f.read()
+            os.unlink(tmp_path)
+
+        if not pdf_bytes:
+            return None
+
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            text = '\n'.join(p.extract_text() or '' for p in pdf.pages)
+
+        # Search for "Línea" / "Linea" label followed by its value
+        match = re.search(r'[Ll][ií]nea\s*[:\-]?\s*(.+?)(?:\n|$)', text)
+        if match:
+            return match.group(1).strip()
+    except Exception as e:
+        print(f'  PDF linea extraction failed: {e}')
+    return None
+
+
 async def scrape_detail(page, url):
     await page.goto(url, wait_until='networkidle', timeout=60000)
     # Wait for the vehicle detail section to render
@@ -171,6 +240,11 @@ async def scrape_detail(page, url):
         # Expose description at top level (matches Meli's 'description' field)
         if specs.get('Descripción'):
             result['description'] = specs['Descripción']
+
+    # Extract vehicle line from PDF ficha técnica
+    linea = await _extract_linea_from_pdf(page)
+    if linea:
+        result['linea'] = linea
 
     return result
 
