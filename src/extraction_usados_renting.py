@@ -55,7 +55,7 @@ async def main(pages, items='all', start_page=1):
         await context.route('**/*', block_unnecessary)
         page = await context.new_page()
 
-        semaphore = asyncio.Semaphore(5)
+        semaphore = asyncio.Semaphore(3)
 
         async def scrape_detail_bounded(row):
             link = row.get('link')
