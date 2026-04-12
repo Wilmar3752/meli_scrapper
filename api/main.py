@@ -5,6 +5,7 @@ from fastapi.security import APIKeyHeader
 from src.extraction_normal import main as meli_main
 from src.extraction_carroya import main as carroya_main
 from src.extraction_usados_renting import main as usados_renting_main
+from src.extraction_vendetunave import main as vendetunave_main
 from pydantic import BaseModel, Field
 
 API_KEY = os.environ.get("API_KEY", "change-me")
@@ -51,6 +52,18 @@ async def get_usados_renting_data(product: UsadosRentingProduct):
     data = await usados_renting_main(pages=product.pages,
                                      items=product.items,
                                      start_page=product.start_page)
+    return data
+
+class VendeTuNaveProduct(BaseModel):
+    pages: Union[int, str] = Field("Number of pages to scrape", example="all")
+    items: Union[int, str] = Field("all", description="Number of items to scrape per run", example=2)
+    start_page: int = Field(1, description="Page number to start scraping from", example=1)
+
+@app.post("/vendetunave/vehiculos")
+async def get_vendetunave_data(product: VendeTuNaveProduct):
+    data = await vendetunave_main(pages=product.pages,
+                                  items=product.items,
+                                  start_page=product.start_page)
     return data
 
 # Keep old endpoint for backwards compatibility
